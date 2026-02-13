@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 // import { TestLogo } from "@/components/user/TestLogo";
 // import { UserAvatarMenu } from "@/components/user/userAvatarMenu";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Device } from "@prisma/client";
+
 import { useRouter } from "next/navigation";
 import { useState, useTransition, Suspense } from "react";
 import { useForm } from "react-hook-form";
@@ -35,6 +35,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+export interface Device {
+    id:string,
+    status:string,
+    administrationName:string,
+    deviceName:string,
+    createdAt:Date
+}
 interface Props {
   trackingData: Device[];
 }

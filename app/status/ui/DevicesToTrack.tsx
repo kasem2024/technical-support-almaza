@@ -2,9 +2,10 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Device } from "@prisma/client";
+
 import { useMemo, useState } from "react";
 import { Search, Laptop } from "lucide-react";
+import { Device } from "./ClientDashboard";
 
 export default function DevicesToTrack({ data }: { data: Device[] }) {
 

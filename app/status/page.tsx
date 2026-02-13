@@ -1,5 +1,5 @@
 
-import ClientDashboard from "./ui/ClientDashboard";
+import ClientDashboard, { Device } from "./ui/ClientDashboard";
 import { getTrackingData } from "@/lib/deviceStatus";
 
 const page = async({
@@ -14,7 +14,7 @@ const page = async({
   console.log(trackingData)
   return (
     <div className="w-screen">
-      <ClientDashboard trackingData={trackingData || []} />
+      <ClientDashboard trackingData={trackingData as Device[] } />
     </div>
   )
 }
