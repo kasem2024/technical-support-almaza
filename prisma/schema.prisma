@@ -1,0 +1,206 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum ReportStatus {
+  PENDING     // created by user, not taken yet
+  ASSIGNED    // taken by a technician
+  IN_PROGRESS // technician started work
+  SOLVED      // solved (soft-delete or auto-delete)
+}
+
+model Report {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  reportName      String
+  office          String
+  administration  String
+  technicalIssues String
+  mobilePhones    String
+  landlinePhone   String
+
+  status          ReportStatus @default(PENDING)
+
+  technicianId    String?      @db.ObjectId
+  technicianName  String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  solvedAt        DateTime?
+}
+enum DeviceStatus {
+  UNDER_MAINTENANCE
+  MAINTAINED
+  DELIVERED
+}
+
+enum UserRole {
+  TECHNICAL
+  LEADER
+  DOMAIN
+  CLIENT
+  ARCHIVE
+}
+
+enum ExistingStatus {
+  MOTAWAGED
+  AGAZA
+  MAMORIA
+}
+
+model Device {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  deviceName         String
+   administrationId String        @db.ObjectId
+  administration   Administration @relation(fields: [administrationId], references: [id])
+  administrationName String?
+  deviceProblem      String
+  deliveryName       String
+  deliveryNumber     String   // REQUIRED
+  status             DeviceStatus
+  devicePassword     String?
+  // 🔗 User references (who did what)
+  receivedById       String    @db.ObjectId 
+  maintainedById     String?   @db.ObjectId
+  deliveredById      String?   @db.ObjectId
+  systemAdminId      String?   @db.ObjectId
+  
+  receivedBy         User      @relation("ReceivedDevices", fields: [receivedById], references: [id])
+  technicalReciverName     String
+  maintainedBy       User?     @relation("MaintainedDevices", fields: [maintainedById], references: [id])
+  technicalMaintainedName   String?
+  deliveredBy        User?     @relation("DeliveredDevices", fields: [deliveredById], references: [id])
+  technicalDeliveryName    String?
+  systemAdminBy      User?     @relation("SystemAdmin", fields: [systemAdminId], references: [id])
+  systemAdminName           String?
+
+  dateOfMaintaining  DateTime?
+  dateOfExit         DateTime?
+  // domain related
+  directToDomain     Boolean  @default(false)
+  deviceOwner        String?
+  ownerNumber        String?
+  deviceWorkstation  String?
+  description        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Service {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  administrationId      String        @db.ObjectId
+  administrationName String?
+  administration        Administration @relation(fields: [administrationId], references: [id])
+  workstationName       String
+  gateName              String
+  existedProblem        String
+  didProblemSolved      String
+  note                  String?
+  // 🔗 Who did the service
+  technicalUserId       String   @db.ObjectId
+  technicalName         String 
+  technicalUser         User     @relation(fields: [technicalUserId], references: [id])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+type UserRate {
+  receivedDevices     Int @default(0)
+  maintainedDevices   Int @default(0)
+  deliveredDevices    Int @default(0)
+  outsideServices     Int @default(0)
+}
+
+model TechnicianEvent {
+  id             String     @id @default(auto()) @map("_id") @db.ObjectId
+  technicianId   String     @db.ObjectId
+  technicianName String
+  type           EventType
+  title          String
+  description    String?
+  link           String?
+  userImage      String?
+  createdAt      DateTime   @default(now())  
+  @@index([technicianId, createdAt])
+}
+
+
+model Administration {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  administrationName String?    @unique 
+  devices            Device[]
+  services           Service[]
+
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+model User {
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  profileName            String
+  fullName               String   @default("")
+  email                  String   @unique
+  password               String
+  userImage              String?
+  userDescription        String?
+  academicQualification  String?
+  academicSpecialization String?
+  role                   UserRole @default(CLIENT)
+  userRate               UserRate
+  profileCompeleted      Boolean? @default(false)
+  technicalScore          Int @default(0)
+  lastActivityAt         DateTime @default(now()) // track user activity
+  // 🔗 Reverse relations (analytics)
+  receivedDevices        Device[]  @relation("ReceivedDevices")
+  maintainedDevices      Device[]  @relation("MaintainedDevices")
+  deliveredDevices       Device[]  @relation("DeliveredDevices")
+  systemAdminDevices     Device[]  @relation("SystemAdmin")
+  services               Service[]
+  receivedCount          Int @default(0)
+  maintainedCount        Int @default(0)
+  deliveredCount         Int @default(0)
+  servicesCount          Int @default(0)
+  fixedAdminCount        Int @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  sessions Session[]
+  status                 ExistingStatus  @default(MOTAWAGED)
+  statusFrom             DateTime?
+  statusTo               DateTime?
+  statusChangedBy        String?     @db.ObjectId
+  statusChangedAt        DateTime?
+  statusHistory          UserStatusHistory[]
+
+}
+
+model Session {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String   @default(uuid())
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  
+  createdAt DateTime @default(now())
+}
+
+enum EventType {
+  SERVICE_ADDED
+  DEVICE_RECEIVED
+  DEVICE_DELIVERED
+  DEVICE_MAINTAINED
+}
+
+model UserStatusHistory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  status    ExistingStatus
+  from      DateTime
+  to        DateTime?
+  changedBy String    @db.ObjectId
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+}
